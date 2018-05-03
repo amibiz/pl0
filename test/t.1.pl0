@@ -1,0 +1,19 @@
+{ Output: 1 50 7 1 8 15 22 29 36 43 }
+
+CONST
+    min = 1,
+    max = 50,
+    step = 7;
+VAR
+    counter;
+BEGIN
+    ! min;
+    ! max;
+    ! step;
+    counter := min;
+    WHILE counter < max DO
+    BEGIN
+        ! counter;
+        counter := counter + step
+    END
+END.

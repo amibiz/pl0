@@ -1,0 +1,19 @@
+{ Output: 10 9 8 7 6 5 4 3 2 1 }
+
+VAR counter;
+
+PROCEDURE print;
+BEGIN
+    IF counter # 0 THEN
+    BEGIN
+        ! counter;
+        counter := counter - 1;
+        CALL print
+    END
+END;
+
+BEGIN
+    counter := 10;
+    CALL print
+END
+.

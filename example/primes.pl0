@@ -1,0 +1,32 @@
+CONST max = 100;
+VAR arg, ret;
+
+PROCEDURE isprime;
+    VAR i;
+    BEGIN
+        ret := 1;
+        i := 2;
+        WHILE i < arg DO
+        BEGIN
+            IF arg / i * i = arg THEN
+            BEGIN
+                ret := 0;
+                i := arg
+            END;
+            i := i + 1
+        END
+    END;
+
+PROCEDURE primes;
+BEGIN
+	arg := 2;
+	WHILE arg < max DO
+	BEGIN
+		CALL isprime;
+		IF ret = 1 THEN ! arg;
+		arg := arg + 1
+	END
+END;
+
+CALL primes
+.

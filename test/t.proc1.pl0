@@ -1,0 +1,9 @@
+{ Output: 10 }
+
+PROCEDURE ten;
+BEGIN
+    ! 10
+END;
+
+CALL ten
+.

@@ -1,0 +1,38 @@
+{ Output: 10 10 10 10 10 10 10 10 10 10 20 }
+
+PROCEDURE parent;
+    VAR i, j;
+
+    PROCEDURE child1;
+        VAR j;
+    BEGIN
+        j := 0;
+        WHILE j <= 2 DO
+        BEGIN
+            ! i;
+            j := j + 1
+        END;
+    END;
+
+    PROCEDURE child2;
+        VAR i;
+    BEGIN
+        i := 0;
+        WHILE i <= 1 DO
+        BEGIN
+            CALL child1;
+            i := i + 1
+        END;
+    END;
+
+BEGIN
+    i := 10;
+    j := 20;
+    CALL child2;
+    CALL child1;
+    ! i;
+    ! j;
+END;
+
+CALL parent
+.

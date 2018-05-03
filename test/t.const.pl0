@@ -1,0 +1,11 @@
+{ Output: 1 10 100 1000 }
+
+CONST x = 1, y = 10, z = 100;
+
+BEGIN
+    ! x;
+    ! y;
+    ! z;
+    ! x * y * z;
+END
+.

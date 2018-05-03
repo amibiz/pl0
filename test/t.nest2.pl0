@@ -1,0 +1,33 @@
+{ Output: 4 5 }
+
+PROCEDURE M;
+    VAR x;
+
+    PROCEDURE P;
+        ! x;
+
+    PROCEDURE Q;
+        VAR y;
+
+        PROCEDURE R;
+        BEGIN
+            y := x;
+            x := x + 1;
+            y := y + x;
+            IF y < 6 THEN
+                CALL R;
+        END;
+    BEGIN
+        CALL R;
+        CALL P;
+        IF x < 5 THEN
+            CALL Q;
+    END;
+
+BEGIN
+    x := 2;
+    CALL Q
+END;
+
+CALL M
+.

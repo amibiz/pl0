@@ -1,0 +1,10 @@
+{ Output: 10 }
+
+{
+    multi
+    line
+    comment
+}
+
+! 10
+.

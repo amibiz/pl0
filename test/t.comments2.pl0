@@ -1,0 +1,6 @@
+{ Output: 10 }
+
+{ { nested comment } }
+
+! 10
+.

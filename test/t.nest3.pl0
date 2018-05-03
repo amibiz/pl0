@@ -1,0 +1,33 @@
+{ Output: -10 10 10 20 }
+
+VAR global;
+
+PROCEDURE nest1;
+    VAR n1;
+
+    PROCEDURE nest2;
+        VAR n2;
+
+        PROCEDURE nest3;
+        BEGIN
+            ! n1;
+            ! n2;
+        END;
+
+    BEGIN
+        ! n1;
+        n2 := 20;
+        CALL nest3
+    END;
+
+BEGIN
+    ! global;
+    n1 := 10;
+    CALL nest2
+END;
+
+BEGIN
+    global := -10;
+    CALL nest1
+END
+.

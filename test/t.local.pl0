@@ -1,0 +1,19 @@
+{ Output: 1 9001 }
+
+VAR static;
+
+PROCEDURE ten;
+    VAR x, y, z;
+BEGIN
+    x := 1000;
+    y := 5000;
+    z := 3000;
+    x := x + y + z + static;
+    ! x
+END;
+
+BEGIN
+    static := 1;
+    ! static;
+    CALL ten
+END.

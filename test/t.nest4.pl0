@@ -1,0 +1,33 @@
+{ Output: 0 200 }
+PROCEDURE outer;
+VAR x;
+
+    PROCEDURE middle;
+
+        PROCEDURE inner;
+
+            PROCEDURE inner2;
+            BEGIN
+                x := 200;
+                CALL middle
+            END;
+
+        BEGIN
+            CALL inner2
+        END;
+
+    BEGIN
+        ! x;
+        IF x = 0 THEN CALL inner
+    END;
+
+
+BEGIN
+    x := 0;
+    CALL middle
+END;
+
+BEGIN { main }
+    CALL outer
+END { main }
+.

@@ -1,0 +1,32 @@
+VAR x, y;
+
+PROCEDURE cmp;
+BEGIN
+    IF x = y THEN ! 0;
+    IF x > y THEN ! 1;
+    IF x < y THEN ! -1;
+
+    IF x # y THEN ! 2;
+    IF y # x THEN ! 3;
+
+    IF x <= y THEN ! 4;
+    IF y <= x THEN ! 5
+END;
+
+BEGIN
+    { Output: 0 4 5 }
+    x := 5;
+    y := 5;
+    CALL cmp;
+
+    { Output: 1 2 3 5 }
+    x := 6;
+    y := 5;
+    CALL cmp;
+
+    { Output: -1 2 3 4 }
+    x := 5;
+    y := 6;
+    CALL cmp
+END
+.

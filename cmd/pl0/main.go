@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"pl0/compiler"
+	"pl0/linker"
 )
 
 var s = flag.Bool("S", false, "only output assembly")
@@ -93,11 +94,8 @@ func compile(pl0file string) {
 	defer os.Remove(objpath)
 
 	// Create binary executable
-	linker := exec.Command("ld", "-e", "start", "-o", progname, objpath)
-	linker.Stderr = os.Stderr
-	linker.Stdout = os.Stdout
-	if err := linker.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+	if err := linker.Link(progname, objpath); err != nil {
+		fmt.Fprintf(os.Stderr, "link: %v\n", err)
 		os.Exit(1)
 	}
 }

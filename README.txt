@@ -18,10 +18,6 @@ Add /usr/local/pl0/bin to the PATH environment variable:
 
     export PATH=$PATH:/usr/local/pl0/bin
 
-Install macOS command line tools (needed for linking executables):
-
-    xcode-select --install
-
 Compile and run a sample program:
 
     pl0 /usr/local/pl0/example/square.pl0

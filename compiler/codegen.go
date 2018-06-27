@@ -3,13 +3,195 @@ package compiler
 import (
 	"fmt"
 	"io"
+	"pl0/compiler/ast"
+	"pl0/compiler/token"
 	"strconv"
 )
 
 var (
 	out     io.Writer // Output stream
 	labelno int       // Label Counter
+	level   int       // Lexical level
 )
+
+// gen takes a program in abstract form and generates code suitable for use
+// by an assembler.
+func gen(prog *ast.Program, w io.Writer) {
+	out = w
+
+	header(prog.Name)
+	prolog()
+	genMain(prog.Main)
+	epilog()
+}
+
+// genMain emits code for the main program node.
+func genMain(b *ast.Block) {
+	level = 0
+	genBlock("MAIN", b)
+	allocStatic(universe)
+}
+
+// genBlock emits code for a block node.
+func genBlock(name string, b *ast.Block) {
+	for _, c := range b.Consts {
+		obj := newObj(c.Name.Name, constCls)
+		obj.lev = level
+		obj.val = c.Value.Value
+	}
+	for p, v := range b.Vars {
+		obj := newObj(v.Name, varCls)
+		obj.lev = level
+		obj.pos = p + 1
+	}
+	for _, p := range b.Procs {
+		level++
+		obj := newObj(p.Name.Name, procCls)
+		obj.lev = level
+		openScope()
+		genBlock(obj.name, p.Block)
+		obj.dsc = topScope.next
+		closeScope()
+		level--
+	}
+	procProlog(name, len(b.Vars))
+	genStmt(b.Body)
+	procEpilog()
+}
+
+// genStmt emits code for the various statement nodes.
+func genStmt(s ast.Stmt) {
+	switch s := s.(type) {
+	case *ast.AssignStmt:
+		obj := find(s.Lhs.Name)
+		genExpr(s.Rhs)
+		if obj.kind == varCls {
+			storeVariable(obj, level)
+		} else {
+			report("cannot assign to " + obj.name + " (kind " + obj.kind.String() + ")")
+		}
+
+	case *ast.CallStmt:
+		obj := find(s.Proc.Name)
+		if obj.kind != procCls {
+			report("cannot call non-procedure " + obj.name + " (kind " + obj.kind.String() + ")")
+		}
+		call(obj, level)
+
+	case *ast.BeginStmt:
+		for _, stmt := range s.List {
+			genStmt(stmt)
+		}
+
+	case *ast.IfStmt:
+		l1 := newLabel()
+		genCond(s.Cond)
+		branchFalse(l1)
+		genStmt(s.Body)
+		postLabel(l1)
+
+	case *ast.WhileStmt:
+		l1 := newLabel()
+		l2 := newLabel()
+		postLabel(l1)
+		genCond(s.Cond)
+		branchFalse(l2)
+		genStmt(s.Body)
+		branch(l1)
+		postLabel(l2)
+
+	case *ast.SendStmt:
+		genExpr(s.X)
+		printNumber()
+
+	case *ast.ReceiveStmt:
+		inputNumber()
+		obj := find(s.Name.Name)
+		if obj.kind == varCls {
+			storeVariable(obj, level)
+		} else {
+			report("cannot receive into " + obj.name + " (kind " + obj.kind.String() + ")")
+		}
+	}
+}
+
+// genCond emits code for the various conditions nodes.
+func genCond(c ast.Cond) {
+	switch c := c.(type) {
+	case *ast.OddCond:
+		genExpr(c.X)
+		testParity()
+		setOdd()
+
+	case *ast.RelCond:
+		genExpr(c.X)
+		push()
+		genExpr(c.Y)
+		popCompare()
+		switch c.Op {
+		case token.EQL:
+			setEqual()
+		case token.NEQ:
+			setNotEqual()
+		case token.LSS:
+			setLess()
+		case token.LEQ:
+			setLessOrEqual()
+		case token.GRT:
+			setGreater()
+		case token.GEQ:
+			setGreaterOrEqual()
+		default:
+			report(fmt.Sprintf("unsupported relation operator: %q", c.Op))
+		}
+	}
+}
+
+// genExpr emits code for the various expression nodes.
+func genExpr(x ast.Expr) {
+	switch x := x.(type) {
+	case *ast.UnaryExpr:
+		genExpr(x.X)
+		switch x.Op {
+		case token.PLUS: // Noop case
+		case token.MINUS:
+			negate()
+		default:
+			report(fmt.Sprintf("unsupported unary operator: %q", x.Op))
+		}
+
+	case *ast.BinaryExpr:
+		genExpr(x.X)
+		push()
+		genExpr(x.Y)
+		switch x.Op {
+		case token.PLUS:
+			popAdd()
+		case token.MINUS:
+			popSub()
+			negate()
+		case token.TIMES:
+			popMul()
+		case token.DIV:
+			popDiv()
+		default:
+			report(fmt.Sprintf("unsupported binary operator: %q", x.Op))
+		}
+
+	case *ast.Number:
+		loadConstant(x.Value)
+
+	case *ast.Ident:
+		obj := find(x.Name)
+		if obj.kind == varCls {
+			loadVariable(obj, level)
+		} else if obj.kind == constCls {
+			loadConstant(obj.val)
+		} else {
+			report("cannot use " + obj.name + " (kind " + obj.kind.String() + ") in expression")
+		}
+	}
+}
 
 // write writes to the output stream.
 func write(a ...interface{}) {
@@ -20,10 +202,6 @@ func write(a ...interface{}) {
 func writeln(a ...interface{}) {
 	write(a...)
 	fmt.Fprintln(out)
-}
-
-func initCode(w io.Writer) {
-	out = w
 }
 
 // emit emits an instruction.

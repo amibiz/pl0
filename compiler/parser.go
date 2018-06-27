@@ -2,11 +2,11 @@ package compiler
 
 import (
 	"io"
+	"os"
 
+	"pl0/compiler/ast"
 	"pl0/compiler/token"
 )
-
-var level int // Lexical level
 
 // match checks for a specific token.
 func match(want token.Token) {
@@ -17,398 +17,236 @@ func match(want token.Token) {
 	}
 }
 
-// checkIdent checks for an identifier literal.
-func checkIdent() {
-	if tok != token.IDENT {
-		expected("identifier", text)
-	}
-}
-
 // ParseAndTranslate parses and translates a program.
 func ParseAndTranslate(in io.Reader, out io.Writer, name string) {
-	initScanner(in)
-	initCode(out)
+	prog, err := Parse(name, in)
+	if err != nil {
+		report("failed to parse program: " + err.Error())
+	}
+	gen(prog, out)
+}
 
-	header(name)
-	prolog()
+func ParseExpr(src io.Reader) ast.Expr {
+	initScanner(src)
 	next()
-	mainBlock()
+	if tok == token.EOF {
+		return nil
+	}
+	return parseExpr()
+}
+
+func Parse(filename string, src io.Reader) (*ast.Program, error) {
+	if src == nil {
+		f, err := os.Open(filename)
+		if err != nil {
+			return nil, err
+		}
+		src = f
+	}
+	initScanner(src)
+	next()
+	b := parseBlock()
 	match(token.PERIOD)
-	epilog()
+	return &ast.Program{Name: filename, Main: b}, nil
 }
 
-// mainBlock parses and translates the top level main procedure.
-func mainBlock() {
-	level = 0
-	block("MAIN")
-	allocStatic(universe)
-}
+func parseBlock() *ast.Block {
+	b := new(ast.Block)
 
-// block parses and translates a block.
-func block(name string) {
-	nvar := 0
 	if tok == token.CONST {
 		match(token.CONST)
-		constDecl()
+		c := make([]*ast.ConstDecl, 1)
+		c[0] = parseConstDecl()
 		for tok == token.COMMA {
 			match(token.COMMA)
-			constDecl()
+			c = append(c, parseConstDecl())
 		}
 		match(token.SEMICOLON)
+		b.Consts = c
 	}
 	if tok == token.VAR {
 		match(token.VAR)
-		nvar++
-		varDecl(nvar)
+		v := make([]*ast.Ident, 1)
+		v[0] = parseIdent()
 		for tok == token.COMMA {
 			match(token.COMMA)
-			nvar++
-			varDecl(nvar)
+			v = append(v, parseIdent())
 		}
 		match(token.SEMICOLON)
+		b.Vars = v
 	}
+	var p []*ast.ProcDecl
 	for tok == token.PROCEDURE {
-		match(token.PROCEDURE)
-		procDecl()
-		match(token.SEMICOLON)
+		p = append(p, parseProc())
 	}
-	if level == 0 {
-		nvar = 0
-	}
-	procProlog(name, nvar)
-	statement()
-	procEpilog()
+	b.Procs = p
+
+	b.Body = parseStmt()
+	return b
 }
 
-// constDecl parses a constant declaration.
-func constDecl() {
-	checkIdent()
-	name := text
-	next()
+func parseConstDecl() *ast.ConstDecl {
+	name := parseIdent()
 	match(token.EQL)
-	val := number()
-	obj := newObj(name, constCls)
-	obj.lev = level
-	obj.val = val
+	return &ast.ConstDecl{Name: name, Value: parseNumber()}
 }
 
-// varDecl parses a variable declaration.
-func varDecl(pos int) {
-	checkIdent()
-	obj := newObj(text, varCls)
-	next()
-	obj.lev = level
-	obj.pos = pos
-}
-
-// procDecl parses a procedure declaration.
-func procDecl() {
-	level++
-	checkIdent()
-	obj := newObj(text, procCls)
-	next()
-	obj.lev = level
+func parseProc() *ast.ProcDecl {
+	match(token.PROCEDURE)
+	name := parseIdent()
 	match(token.SEMICOLON)
-	openScope()
-	block(obj.name)
-	obj.dsc = topScope.next
-	closeScope()
-	level--
+	block := parseBlock()
+	match(token.SEMICOLON)
+	return &ast.ProcDecl{Name: name, Block: block}
 }
 
-// statement parses and translates a statement.
-func statement() {
+func parseStmt() ast.Stmt {
 	switch tok {
 	case token.IDENT:
-		assignment()
+		return parseAssign()
 	case token.CALL:
-		callProc()
-	case token.BEGIN:
-		begin()
-	case token.IF:
-		doIf()
-	case token.WHILE:
-		while()
+		return parseCall()
 	case token.SEND:
-		send()
+		return parseSend()
 	case token.RECV:
-		receive()
+		return parseReceive()
+	case token.BEGIN:
+		return parseBegin()
+	case token.IF:
+		return parseIf()
+	case token.WHILE:
+		return parseWhile()
 	}
+	return nil
 }
 
-// send parses and translates a "!".
-func send() {
-	match(token.SEND)
-	expression()
-	printNumber()
+func parseAssign() *ast.AssignStmt {
+	i := parseIdent()
+	match(token.BECOMES)
+	x := parseExpr()
+	return &ast.AssignStmt{Lhs: i, Rhs: x}
 }
 
-// receive parses and translates a "?".
-func receive() {
-	match(token.RECV)
-	inputNumber()
-	checkIdent()
-	obj := find(text)
-	next()
-	if obj.kind == varCls {
-		storeVariable(obj, level)
-	} else {
-		report("cannot receive into " + obj.name + " (kind " + obj.kind.String() + ")")
-	}
-}
-
-// callProc parses and translates a call statement.
-func callProc() {
+func parseCall() *ast.CallStmt {
 	match(token.CALL)
-	checkIdent()
-	obj := find(text)
-	next()
-	if obj.kind != procCls {
-		report("cannot call non-procedure " + obj.name + " (kind " + obj.kind.String() + ")")
-	}
-	call(obj, level)
+	return &ast.CallStmt{Proc: parseIdent()}
 }
 
-// begin parses and translates a begin statement.
-func begin() {
+func parseSend() *ast.SendStmt {
+	match(token.SEND)
+	return &ast.SendStmt{X: parseExpr()}
+}
+
+func parseReceive() *ast.ReceiveStmt {
+	match(token.RECV)
+	return &ast.ReceiveStmt{Name: parseIdent()}
+}
+
+func parseBegin() *ast.BeginStmt {
 	match(token.BEGIN)
-	statement()
+	s := make([]ast.Stmt, 1)
+	s[0] = parseStmt()
 	for tok == token.SEMICOLON {
 		match(token.SEMICOLON)
-		statement()
+		s = append(s, parseStmt())
 	}
 	match(token.END)
+	return &ast.BeginStmt{List: s}
 }
 
-// assignment parses and translates an assignment statement.
-func assignment() {
-	checkIdent()
-	obj := find(text)
-	next()
-	match(token.BECOMES)
-	expression()
-	if obj.kind == varCls {
-		storeVariable(obj, level)
-	} else {
-		report("cannot assign to " + obj.name + " (kind " + obj.kind.String() + ")")
-	}
-}
-
-// doIf parses and translates an if statement.
-func doIf() {
+func parseIf() *ast.IfStmt {
 	match(token.IF)
-	l1 := newLabel()
-	condition()
-	branchFalse(l1)
+	c := parseCond()
 	match(token.THEN)
-	statement()
-	postLabel(l1)
+	s := parseStmt()
+	return &ast.IfStmt{Cond: c, Body: s}
 }
 
-// while parses and translates a while statement.
-func while() {
+func parseWhile() *ast.WhileStmt {
 	match(token.WHILE)
-	l1 := newLabel()
-	l2 := newLabel()
-	postLabel(l1)
-	condition()
-	branchFalse(l2)
+	c := parseCond()
 	match(token.DO)
-	statement()
-	branch(l1)
-	postLabel(l2)
+	s := parseStmt()
+	return &ast.WhileStmt{Cond: c, Body: s}
 }
 
-// condition parses and translates a condition.
-func condition() {
+func parseCond() ast.Cond {
 	if tok == token.ODD {
-		odd()
-	} else {
-		relation()
+		match(token.ODD)
+		return &ast.OddCond{X: parseExpr()}
 	}
+	return parseRel()
 }
 
-// relation parses and translates a relation.
-func relation() {
-	expression()
-	if tok.IsRelop() {
-		push()
-		switch tok {
-		case token.EQL:
-			equals()
-		case token.NEQ:
-			notEquals()
-		case token.LSS:
-			less()
-		case token.LEQ:
-			lessOrEqual()
-		case token.GRT:
-			greater()
-		case token.GEQ:
-			greaterOrEqual()
-		}
-	} else {
+func parseRel() *ast.RelCond {
+	x := parseExpr()
+	if !tok.IsRelop() {
 		expected("relation", text)
+		return nil
 	}
+	op := tok
+	next()
+	return &ast.RelCond{X: x, Op: op, Y: parseExpr()}
 }
 
-// odd recognizes and translates a relational "odd parity".
-func odd() {
-	match(token.ODD)
-	expression()
-	testParity()
-	setOdd()
-}
-
-// greaterOrEqual recognizes and translates a relational "greater than".
-func greaterOrEqual() {
-	match(token.GEQ)
-	expression()
-	popCompare()
-	setGreaterOrEqual()
-}
-
-// greater recognizes and translates a relational "greater than".
-func greater() {
-	match(token.GRT)
-	expression()
-	popCompare()
-	setGreater()
-}
-
-// lessOrEqual recognizes and translates a relational "less or equal".
-func lessOrEqual() {
-	match(token.LEQ)
-	expression()
-	popCompare()
-	setLessOrEqual()
-}
-
-// less recognizes and translates a relational "less than".
-func less() {
-	match(token.LSS)
-	expression()
-	popCompare()
-	setLess()
-}
-
-// notEquals recognizes and translates a relational "Not equals".
-func notEquals() {
-	match(token.NEQ)
-	expression()
-	popCompare()
-	setNotEqual()
-}
-
-// equals recognizes and translates a relational "equals".
-func equals() {
-	match(token.EQL)
-	expression()
-	popCompare()
-	setEqual()
-}
-
-// expression parses and translats a maths expression.
-func expression() {
-	signedTerm()
-	for tok.IsAddop() {
-		switch tok {
-		case token.PLUS:
-			add()
-		case token.MINUS:
-			subtract()
-		}
-	}
-}
-
-// signedTerm parses and translates a maths term with optional leading sign.
-func signedTerm() {
+func parseExpr() ast.Expr {
 	sign := tok
+	if sign.IsAddop() {
+		next()
+	}
+	x := parseTerm()
+	if sign.IsAddop() {
+		x = &ast.UnaryExpr{X: x, Op: sign}
+	}
 	if tok.IsAddop() {
+		op := tok
 		next()
+		return &ast.BinaryExpr{X: x, Op: op, Y: parseExpr()}
 	}
-	term()
-	if sign == token.MINUS {
-		negate()
+	return x
+}
+
+func parseTerm() ast.Expr {
+	x := parseFact()
+	if tok.IsMulop() {
+		op := tok
+		next()
+		return &ast.BinaryExpr{X: x, Op: op, Y: parseTerm()}
 	}
+	return x
 }
 
-// add parses and translates an addition operation.
-func add() {
-	match(token.PLUS)
-	push()
-	term()
-	popAdd()
-}
-
-// subtract parses and translates a subtraction operation.
-func subtract() {
-	match(token.MINUS)
-	push()
-	term()
-	popSub()
-	negate()
-}
-
-// term parses and translates  a maths term.
-func term() {
-	factor()
-	for tok.IsMulop() {
-		switch tok {
-		case token.TIMES:
-			multiply()
-		case token.DIV:
-			divide()
-		}
-	}
-}
-
-// multiply parses and translates a multiply.
-func multiply() {
-	match(token.TIMES)
-	push()
-	factor()
-	popMul()
-}
-
-// divide parses and translates a divide.
-func divide() {
-	match(token.DIV)
-	push()
-	factor()
-	popDiv()
-}
-
-// factor parses and translates a maths factor.
-func factor() {
-	if tok == token.LPAREN {
+func parseFact() ast.Expr {
+	switch tok {
+	case token.IDENT:
+		return parseIdent()
+	case token.NUMBER:
+		return parseNumber()
+	case token.LPAREN:
 		match(token.LPAREN)
-		expression()
+		x := parseExpr()
 		match(token.RPARAN)
-	} else if tok == token.NUMBER {
-		loadConstant(number())
-	} else if tok == token.IDENT {
-		checkIdent()
-		obj := find(text)
-		next()
-		if obj.kind == varCls {
-			loadVariable(obj, level)
-		} else if obj.kind == constCls {
-			loadConstant(obj.val)
-		} else {
-			report("cannot use " + obj.name + " (kind " + obj.kind.String() + ") in expression")
-		}
-	} else {
+		return x
+	default:
 		expected("expression", text)
 	}
+	return nil
 }
 
-// number parses and returns a number literal.
-func number() string {
+func parseIdent() *ast.Ident {
+	if tok != token.IDENT {
+		expected("identifier", text)
+	}
+	i := &ast.Ident{Name: text}
+	next()
+	return i
+}
+
+func parseNumber() *ast.Number {
 	if tok != token.NUMBER {
 		expected("number", text)
 	}
-	value := text
+	n := &ast.Number{Value: text}
 	next()
-	return value
+	return n
 }

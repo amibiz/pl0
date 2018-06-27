@@ -10,11 +10,13 @@ BEGIN
     IF y # x THEN ! 3;
 
     IF x <= y THEN ! 4;
-    IF y <= x THEN ! 5
+    IF y <= x THEN ! 5;
+
+    IF ODD x THEN ! 6;
 END;
 
 BEGIN
-    { Output: 0 4 5 }
+    { Output: 0 4 5 6 }
     x := 5;
     y := 5;
     CALL cmp;
@@ -24,7 +26,7 @@ BEGIN
     y := 5;
     CALL cmp;
 
-    { Output: -1 2 3 4 }
+    { Output: -1 2 3 4 6 }
     x := 5;
     y := 6;
     CALL cmp

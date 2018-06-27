@@ -11,7 +11,7 @@ usage() {
     echo
     echo "The commands are:"
     echo
-    echo "        build     build compiler executable"
+    echo "        build     build compiler executable and tools"
     echo "        clean     remove all build and testing artifacts"
     echo "        deps      download and setup dependencies"
     echo "        release   create release tarball"
@@ -30,10 +30,11 @@ TEMPDIR="$CWD/tmp"
 do_build() {
     VERSION=$1
     go build -ldflags "-X main.version=$1" -o bin/pl0 cmd/pl0/*.go
+    go build -ldflags "-X main.version=$1" -o bin/vis cmd/vis/*.go
 }
 
 do_clean() {
-    rm -f bin/pl0 a.out out1 out2
+    rm -f bin/pl0 bin/vis a.out out1 out2
 }
 
 do_deps() {

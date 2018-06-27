@@ -143,7 +143,7 @@ func next() {
 		return
 	}
 	if tok := singles[look]; tok != NULL {
-		token, text = tok, tokens[token]
+		token, text = tok, tokens[tok]
 		getChar()
 		return
 	}

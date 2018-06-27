@@ -63,6 +63,8 @@ var tokens = [...]string{
 	BECOMES:   ":=",
 	RECV:      "?",
 	SEND:      "!",
+	LPAREN:    "(",
+	RPARAN:    ")",
 
 	EQL: "=",
 	NEQ: "#",

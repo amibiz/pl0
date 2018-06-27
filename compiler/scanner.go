@@ -69,7 +69,7 @@ func skipWhite() {
 
 // skipComment skips a comment field.
 func skipComment() {
-	for look != '}' {
+	for look != '}' && look != eot {
 		getChar()
 		if look == '{' {
 			skipComment()

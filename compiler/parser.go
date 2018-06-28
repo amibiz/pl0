@@ -1,12 +1,16 @@
 package compiler
 
-import "io"
+import (
+	"io"
+
+	"pl0/compiler/token"
+)
 
 var level int // Lexical level
 
 // match checks for a specific token.
-func match(want Token) {
-	if token == want {
+func match(want token.Token) {
+	if tok == want {
 		next()
 	} else {
 		expected(want.String(), text)
@@ -15,7 +19,7 @@ func match(want Token) {
 
 // checkIdent checks for an identifier literal.
 func checkIdent() {
-	if token != IDENT {
+	if tok != token.IDENT {
 		expected("identifier", text)
 	}
 }
@@ -29,7 +33,7 @@ func ParseAndTranslate(in io.Reader, out io.Writer, name string) {
 	prolog()
 	next()
 	mainBlock()
-	match(PERIOD)
+	match(token.PERIOD)
 	epilog()
 }
 
@@ -43,30 +47,30 @@ func mainBlock() {
 // block parses and translates a block.
 func block(name string) {
 	nvar := 0
-	if token == CONST {
-		match(CONST)
+	if tok == token.CONST {
+		match(token.CONST)
 		constDecl()
-		for token == COMMA {
-			match(COMMA)
+		for tok == token.COMMA {
+			match(token.COMMA)
 			constDecl()
 		}
-		match(SEMICOLON)
+		match(token.SEMICOLON)
 	}
-	if token == VAR {
-		match(VAR)
+	if tok == token.VAR {
+		match(token.VAR)
 		nvar++
 		varDecl(nvar)
-		for token == COMMA {
-			match(COMMA)
+		for tok == token.COMMA {
+			match(token.COMMA)
 			nvar++
 			varDecl(nvar)
 		}
-		match(SEMICOLON)
+		match(token.SEMICOLON)
 	}
-	for token == PROCEDURE {
-		match(PROCEDURE)
+	for tok == token.PROCEDURE {
+		match(token.PROCEDURE)
 		procDecl()
-		match(SEMICOLON)
+		match(token.SEMICOLON)
 	}
 	if level == 0 {
 		nvar = 0
@@ -81,7 +85,7 @@ func constDecl() {
 	checkIdent()
 	name := text
 	next()
-	match(EQL)
+	match(token.EQL)
 	val := number()
 	obj := newObj(name, constCls)
 	obj.lev = level
@@ -104,7 +108,7 @@ func procDecl() {
 	obj := newObj(text, procCls)
 	next()
 	obj.lev = level
-	match(SEMICOLON)
+	match(token.SEMICOLON)
 	openScope()
 	block(obj.name)
 	obj.dsc = topScope.next
@@ -114,34 +118,34 @@ func procDecl() {
 
 // statement parses and translates a statement.
 func statement() {
-	switch token {
-	case IDENT:
+	switch tok {
+	case token.IDENT:
 		assignment()
-	case CALL:
+	case token.CALL:
 		callProc()
-	case BEGIN:
+	case token.BEGIN:
 		begin()
-	case IF:
+	case token.IF:
 		doIf()
-	case WHILE:
+	case token.WHILE:
 		while()
-	case SEND:
+	case token.SEND:
 		send()
-	case RECV:
+	case token.RECV:
 		receive()
 	}
 }
 
 // send parses and translates a "!".
 func send() {
-	match(SEND)
+	match(token.SEND)
 	expression()
 	printNumber()
 }
 
 // receive parses and translates a "?".
 func receive() {
-	match(RECV)
+	match(token.RECV)
 	inputNumber()
 	checkIdent()
 	obj := find(text)
@@ -155,7 +159,7 @@ func receive() {
 
 // callProc parses and translates a call statement.
 func callProc() {
-	match(CALL)
+	match(token.CALL)
 	checkIdent()
 	obj := find(text)
 	next()
@@ -167,13 +171,13 @@ func callProc() {
 
 // begin parses and translates a begin statement.
 func begin() {
-	match(BEGIN)
+	match(token.BEGIN)
 	statement()
-	for token == SEMICOLON {
-		match(SEMICOLON)
+	for tok == token.SEMICOLON {
+		match(token.SEMICOLON)
 		statement()
 	}
-	match(END)
+	match(token.END)
 }
 
 // assignment parses and translates an assignment statement.
@@ -181,7 +185,7 @@ func assignment() {
 	checkIdent()
 	obj := find(text)
 	next()
-	match(BECOMES)
+	match(token.BECOMES)
 	expression()
 	if obj.kind == varCls {
 		storeVariable(obj, level)
@@ -192,24 +196,24 @@ func assignment() {
 
 // doIf parses and translates an if statement.
 func doIf() {
-	match(IF)
+	match(token.IF)
 	l1 := newLabel()
 	condition()
 	branchFalse(l1)
-	match(THEN)
+	match(token.THEN)
 	statement()
 	postLabel(l1)
 }
 
 // while parses and translates a while statement.
 func while() {
-	match(WHILE)
+	match(token.WHILE)
 	l1 := newLabel()
 	l2 := newLabel()
 	postLabel(l1)
 	condition()
 	branchFalse(l2)
-	match(DO)
+	match(token.DO)
 	statement()
 	branch(l1)
 	postLabel(l2)
@@ -217,7 +221,7 @@ func while() {
 
 // condition parses and translates a condition.
 func condition() {
-	if token == ODD {
+	if tok == token.ODD {
 		odd()
 	} else {
 		relation()
@@ -227,20 +231,20 @@ func condition() {
 // relation parses and translates a relation.
 func relation() {
 	expression()
-	if token.IsRelop() {
+	if tok.IsRelop() {
 		push()
-		switch token {
-		case EQL:
+		switch tok {
+		case token.EQL:
 			equals()
-		case NEQ:
+		case token.NEQ:
 			notEquals()
-		case LSS:
+		case token.LSS:
 			less()
-		case LEQ:
+		case token.LEQ:
 			lessOrEqual()
-		case GRT:
+		case token.GRT:
 			greater()
-		case GEQ:
+		case token.GEQ:
 			greaterOrEqual()
 		}
 	} else {
@@ -250,7 +254,7 @@ func relation() {
 
 // odd recognizes and translates a relational "odd parity".
 func odd() {
-	match(ODD)
+	match(token.ODD)
 	expression()
 	testParity()
 	setOdd()
@@ -258,7 +262,7 @@ func odd() {
 
 // greaterOrEqual recognizes and translates a relational "greater than".
 func greaterOrEqual() {
-	match(GEQ)
+	match(token.GEQ)
 	expression()
 	popCompare()
 	setGreaterOrEqual()
@@ -266,7 +270,7 @@ func greaterOrEqual() {
 
 // greater recognizes and translates a relational "greater than".
 func greater() {
-	match(GRT)
+	match(token.GRT)
 	expression()
 	popCompare()
 	setGreater()
@@ -274,7 +278,7 @@ func greater() {
 
 // lessOrEqual recognizes and translates a relational "less or equal".
 func lessOrEqual() {
-	match(LEQ)
+	match(token.LEQ)
 	expression()
 	popCompare()
 	setLessOrEqual()
@@ -282,7 +286,7 @@ func lessOrEqual() {
 
 // less recognizes and translates a relational "less than".
 func less() {
-	match(LSS)
+	match(token.LSS)
 	expression()
 	popCompare()
 	setLess()
@@ -290,7 +294,7 @@ func less() {
 
 // notEquals recognizes and translates a relational "Not equals".
 func notEquals() {
-	match(NEQ)
+	match(token.NEQ)
 	expression()
 	popCompare()
 	setNotEqual()
@@ -298,7 +302,7 @@ func notEquals() {
 
 // equals recognizes and translates a relational "equals".
 func equals() {
-	match(EQL)
+	match(token.EQL)
 	expression()
 	popCompare()
 	setEqual()
@@ -307,11 +311,11 @@ func equals() {
 // expression parses and translats a maths expression.
 func expression() {
 	signedTerm()
-	for token.IsAddop() {
-		switch token {
-		case PLUS:
+	for tok.IsAddop() {
+		switch tok {
+		case token.PLUS:
 			add()
-		case MINUS:
+		case token.MINUS:
 			subtract()
 		}
 	}
@@ -319,19 +323,19 @@ func expression() {
 
 // signedTerm parses and translates a maths term with optional leading sign.
 func signedTerm() {
-	sign := token
-	if token.IsAddop() {
+	sign := tok
+	if tok.IsAddop() {
 		next()
 	}
 	term()
-	if sign == MINUS {
+	if sign == token.MINUS {
 		negate()
 	}
 }
 
 // add parses and translates an addition operation.
 func add() {
-	match(PLUS)
+	match(token.PLUS)
 	push()
 	term()
 	popAdd()
@@ -339,7 +343,7 @@ func add() {
 
 // subtract parses and translates a subtraction operation.
 func subtract() {
-	match(MINUS)
+	match(token.MINUS)
 	push()
 	term()
 	popSub()
@@ -349,11 +353,11 @@ func subtract() {
 // term parses and translates  a maths term.
 func term() {
 	factor()
-	for token.IsMulop() {
-		switch token {
-		case TIMES:
+	for tok.IsMulop() {
+		switch tok {
+		case token.TIMES:
 			multiply()
-		case DIV:
+		case token.DIV:
 			divide()
 		}
 	}
@@ -361,7 +365,7 @@ func term() {
 
 // multiply parses and translates a multiply.
 func multiply() {
-	match(TIMES)
+	match(token.TIMES)
 	push()
 	factor()
 	popMul()
@@ -369,7 +373,7 @@ func multiply() {
 
 // divide parses and translates a divide.
 func divide() {
-	match(DIV)
+	match(token.DIV)
 	push()
 	factor()
 	popDiv()
@@ -377,13 +381,13 @@ func divide() {
 
 // factor parses and translates a maths factor.
 func factor() {
-	if token == LPAREN {
-		match(LPAREN)
+	if tok == token.LPAREN {
+		match(token.LPAREN)
 		expression()
-		match(RPARAN)
-	} else if token == NUMBER {
+		match(token.RPARAN)
+	} else if tok == token.NUMBER {
 		loadConstant(number())
-	} else if token == IDENT {
+	} else if tok == token.IDENT {
 		checkIdent()
 		obj := find(text)
 		next()
@@ -401,7 +405,7 @@ func factor() {
 
 // number parses and returns a number literal.
 func number() string {
-	if token != NUMBER {
+	if tok != token.NUMBER {
 		expected("number", text)
 	}
 	value := text

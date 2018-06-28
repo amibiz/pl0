@@ -1,4 +1,4 @@
-package compiler
+package token
 
 type Token int
 
@@ -101,6 +101,14 @@ func init() {
 	for i := keywords_start + 1; i < keywords_end; i++ {
 		keywords[tokens[i]] = i
 	}
+}
+
+// Lookup identifies a keyword or IDENT (if not a keyword).
+func Lookup(text string) Token {
+	if tok, ok := keywords[text]; ok {
+		return tok
+	}
+	return IDENT
 }
 
 func (tok Token) String() string {

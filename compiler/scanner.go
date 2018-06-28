@@ -3,6 +3,8 @@ package compiler
 import (
 	"bufio"
 	"io"
+
+	"pl0/compiler/token"
 )
 
 const eot = 0x4 // End-of-Transmission (Ctrl+D / ^D)
@@ -10,7 +12,7 @@ const eot = 0x4 // End-of-Transmission (Ctrl+D / ^D)
 var (
 	in     *bufio.Reader // Input stream
 	look   byte          // Lookahead character
-	token  Token         // Encoded token
+	tok    token.Token   // Encoded token
 	text   string        // Unencoded token
 	lineno int           // Current lineno number
 )
@@ -88,12 +90,7 @@ func scanIdent() {
 		text += string(look)
 		getChar()
 	}
-	// Check keywords table
-	if tok, ok := keywords[text]; ok {
-		token = tok
-	} else {
-		token = IDENT
-	}
+	tok = token.Lookup(text)
 }
 
 // scanNumber scans a Number.
@@ -106,32 +103,32 @@ func scanNumber() {
 		text += string(look)
 		getChar()
 	}
-	token = NUMBER
+	tok = token.NUMBER
 }
 
-var singles = [256]Token{
-	'.': PERIOD,
-	',': COMMA,
-	';': SEMICOLON,
-	'!': SEND,
-	'?': RECV,
-	'(': LPAREN,
-	')': RPARAN,
+var singles = [256]token.Token{
+	'.': token.PERIOD,
+	',': token.COMMA,
+	';': token.SEMICOLON,
+	'!': token.SEND,
+	'?': token.RECV,
+	'(': token.LPAREN,
+	')': token.RPARAN,
 
-	'=': EQL,
-	'#': NEQ,
+	'=': token.EQL,
+	'#': token.NEQ,
 
-	'*': TIMES,
-	'/': DIV,
-	'+': PLUS,
-	'-': MINUS,
+	'*': token.TIMES,
+	'/': token.DIV,
+	'+': token.PLUS,
+	'-': token.MINUS,
 }
 
 // next scans the input stream for the next token.
 func next() {
 	skipWhite()
 	if look == eot {
-		token, text = EOF, tokens[EOF]
+		tok, text = token.EOF, token.EOF.String()
 		return
 	}
 	if isAlpha(look) {
@@ -142,28 +139,28 @@ func next() {
 		scanNumber()
 		return
 	}
-	if tok := singles[look]; tok != NULL {
-		token, text = tok, tokens[tok]
+	if t := singles[look]; t != token.NULL {
+		tok, text = t, t.String()
 		getChar()
 		return
 	}
 	switch look {
 	case ':':
-		token, text = follow('=', BECOMES, NULL)
+		tok, text = follow('=', token.BECOMES, token.NULL)
 	case '>':
-		token, text = follow('=', GEQ, GRT)
+		tok, text = follow('=', token.GEQ, token.GRT)
 	case '<':
-		token, text = follow('=', LEQ, LSS)
+		tok, text = follow('=', token.LEQ, token.LSS)
 	default:
 		report("illegal character '" + string(look) + "'")
 	}
 }
 
-func follow(expect byte, fyes Token, fno Token) (Token, string) {
+func follow(expect byte, fyes, fno token.Token) (token.Token, string) {
 	getChar()
 	if look == expect {
 		getChar()
-		return fyes, tokens[fyes]
+		return fyes, fyes.String()
 	}
-	return fno, tokens[fno]
+	return fno, fno.String()
 }

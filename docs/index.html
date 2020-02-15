@@ -1,0 +1,76 @@
+<!doctype html>
+<html class="no-js" lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>PL/0 Compiler</title>
+  <meta name="description" content="pl0 is an open source compiler for the PL/0 programming language.
+                                    It is small, simple and educational compiler that produces native
+                                    executables for the macOS operating system.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/style.css">
+
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Merriweather|Roboto+Mono&display=swap" rel="stylesheet">
+
+  <meta name="theme-color" content="#fafafa">
+</head>
+
+<body>
+
+  <header>
+    <img class="logo" src="img/logo.png" alt="Logo">
+  </header>
+
+  <h1>PL/0 Compiler</h1>
+  <p>
+    <a href="https://github.com/amibiz/pl0">pl0</a> is an open source compiler for the
+    <cite>PL/0 programming language</cite>.
+    It is small, simple and educational compiler that produces native executables for the macOS operating system.
+  </p>
+  <p>
+    For a description of the programming language, <cite>Wikipedia</cite> describes it best:
+  </p>
+
+  <blockquote cite="https://en.wikipedia.org/wiki/PL/0">
+    <p>PL/0 is a programming language, intended as an educational programming
+      language, that is similar to but much simpler than Pascal, a general-purpose
+      programming language.</p>
+  </blockquote>
+
+  <h1>Installation</h1>
+  <p>
+    Download the compiler from the <a href="https://github.com/amibiz/pl0/releases">releases</a> page.
+    Extract the archive into <code>/usr/local</code>, creating a pl0 installation in <code>/usr/local/pl0</code>.
+    For Example:
+  </p>
+  <pre>tar -C /usr/local -xzf pl0-$VERSION.darwin.amd64.tar.gz</pre>
+
+  <p>
+    Add <code>/usr/local/pl0/bin</code> to the <code>PATH</code> environment variable:
+  </p>
+  <pre>export PATH=$PATH:/usr/local/pl0/bin</pre>
+
+  <h1>Usage</h1>
+  <p>
+    Compile and run a sample program:
+  </p>
+  <pre>pl0 /usr/local/pl0/example/square.pl0
+./square</pre>
+
+  <footer>
+    <a href="https://github.com/amibiz/pl0">https://github.com/amibiz/pl0</a>
+  </footer>
+
+  <script src="js/vendor/modernizr-3.8.0.min.js"></script>
+
+  <script>
+    window.ga = function () { ga.q.push(arguments) }; ga.q = []; ga.l = +new Date;
+    ga('create', 'UA-158612426-1', 'auto'); ga('set','transport','beacon'); ga('send', 'pageview')
+  </script>
+  <script src="https://www.google-analytics.com/analytics.js" async></script>
+</body>
+
+</html>

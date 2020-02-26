@@ -1,11 +1,17 @@
-The PL/0 Programming Language
-=============================
+PL/0 Compiler
+=============
 
-PL/0 is a programming language, intended as an educational programming
-language, that is similar to but much simpler than Pascal, a general-purpose
-programming language.
+pl0 is an open source compiler for the PL/0 programming language.
+It is small, simple and educational compiler that produces native
+executables for the macOS operating system.
 
-Download the compiler from the release page
+For a description of the programming language, Wikipedia describes it best:
+
+"PL/0 is a programming language, intended as an educational
+ programming language, that is similar to but much simpler
+ than Pascal, a general-purpose programming language."
+
+Download the compiler from the releases page
 
     https://github.com/amibiz/pl0/releases
 
